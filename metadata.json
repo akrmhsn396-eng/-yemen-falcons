@@ -1,0 +1,6 @@
+{
+  "name": "صقور اليمن: نزاع الشوارع | Yemen Street Fighters",
+  "description": "لعبة قتال ثلاثية الأبعاد واقعية تجسد تفاصيل المدن والجبال اليمنية، بأسلوب قتالي حماسي يعكس الصمود اليمني المعاصر.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
