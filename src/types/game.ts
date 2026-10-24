@@ -254,4 +254,8 @@ export interface DailyChallenge {
   rewardXP: number;
   isCompleted: boolean;
   type: 'kills' | 'waves' | 'headshots' | 'survival_time';
+}export interface PlayerSkills {
+  movementSpeed: number;
+  aimAccuracy: number;
+  tacticalDefense: number;
 }

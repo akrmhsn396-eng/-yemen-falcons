@@ -15,6 +15,7 @@ import {
   RPGQuest,
   RPGItem,
   DailyChallenge,
+  PlayerSkills,
 } from './types/game';
 import { sound } from './game/audio';
 
@@ -26,6 +27,14 @@ export default function App() {
   const [isTechModalOpen, setIsTechModalOpen] = useState(false);
   const [isMultiplayerModalOpen, setIsMultiplayerModalOpen] = useState(false);
   const [isDailyChallengesOpen, setIsDailyChallengesOpen] = useState(false);
+  
+  // Player Progress State
+  const [totalXP, setTotalXP] = useState(2500); // Mock starting XP
+  const [playerSkills, setPlayerSkills] = useState<PlayerSkills>({
+    movementSpeed: 1,
+    aimAccuracy: 1,
+    tacticalDefense: 1,
+  });
   
   // Open World RPG State
   const [isQuestLogOpen, setIsQuestLogOpen] = useState(false);
@@ -104,6 +113,17 @@ export default function App() {
     setCurrentProvince(provinceId === 'sanaa' ? 'صنعاء القديمة' : (provinceId === 'aden' ? 'عدن التاريخية' : (provinceId === 'taiz' ? 'تعز الجبلية' : 'محافظات اليمن')));
     setGameState('playing');
   };
+  
+  const handleUpgradeSkill = (skillKey: keyof PlayerSkills, cost: number) => {
+    if (totalXP >= cost && playerSkills[skillKey] < 5) {
+      setTotalXP(prev => prev - cost);
+      setPlayerSkills(prev => ({
+        ...prev,
+        [skillKey]: prev[skillKey] + 1
+      }));
+      sound.playSelect();
+    }
+  };
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-stone-950 font-['Cairo',sans-serif]">
@@ -171,10 +191,13 @@ export default function App() {
         challenges={dailyChallenges}
       />
 
-      {/* Character Customization Modal */}
+      {/* Character Customization & Skill Tree Modal */}
       <CharacterCustomizationModal
         isOpen={isCustomizationOpen}
         onClose={() => setIsCustomizationOpen(false)}
+        playerXP={totalXP}
+        skills={playerSkills}
+        onUpgradeSkill={handleUpgradeSkill}
       />
 
       {/* Settings & Store Modal */}
