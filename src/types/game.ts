@@ -264,6 +264,21 @@ export interface PlayerSkills {
   tacticalDefense: number;
 }
 
+export type LeaderSkillKey = 
+  | 'rapidHealing'
+  | 'sniperPrecision'
+  | 'squadFortification'
+  | 'airSupportLogistics'
+  | 'mountainSurvival';
+
+export interface LeaderSkills {
+  rapidHealing: number;       // سرعة التئام الجروح وتجدد الحيوية
+  sniperPrecision: number;    // دقة نيران القناصة والإصابات القاتلة
+  squadFortification: number; // تعزيز دروع وتحصينات الفريق
+  airSupportLogistics: number;// لوجستيات وجاهزية الدعم الجوي
+  mountainSurvival: number;   // غريزة البقاء والتمويه في المرتفعات
+}
+
 export interface WeaponAttachment {
   id: string;
   nameAr: string;

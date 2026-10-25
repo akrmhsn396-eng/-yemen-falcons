@@ -5,14 +5,77 @@ import type {
   GameStats,
   MultiplayerRoom,
   PlayerSkills,
+  LeaderSkillKey,
+  LeaderSkills,
+  WeaponAttachment,
+  WeaponUpgradeState,
   RPGItem,
   RPGQuest,
   SkillKey,
 } from '../types/game';
 
+export interface LeaderSkillInfo {
+  key: LeaderSkillKey;
+  titleAr: string;
+  descriptionAr: string;
+  effectFormulaAr: (level: number) => string;
+  iconName: 'heartPulse' | 'crosshair' | 'shield' | 'plane' | 'mountain';
+  maxLevel: number;
+  baseCostXP: number;
+}
+
+export const LEADER_SKILLS_INFO: LeaderSkillInfo[] = [
+  {
+    key: 'rapidHealing',
+    titleAr: 'التئام الجروح الميداني',
+    descriptionAr: 'تجديد صحة القائد والفريق تدريجياً خلال المعركة مع تسريع استعادة العافية في وضع التمويه.',
+    effectFormulaAr: (lvl) => `استعادة +${lvl * 2.5} HP كل 3 ثواني (+${lvl * 4} أثناء التمويه)`,
+    iconName: 'heartPulse',
+    maxLevel: 5,
+    baseCostXP: 300,
+  },
+  {
+    key: 'sniperPrecision',
+    titleAr: 'دقة نيران القناصة',
+    descriptionAr: 'تعزيز دقة إطلاق النار وتثبيت السلاح مع زيادة الضرر الحرج (Critical Damage) لجميع أسلحة الفريق.',
+    effectFormulaAr: (lvl) => `تخفيض تشتت الرصاص بنسبة ${lvl * 15}% وضرر حرج +${lvl * 20}%`,
+    iconName: 'crosshair',
+    maxLevel: 5,
+    baseCostXP: 350,
+  },
+  {
+    key: 'squadFortification',
+    titleAr: 'تحصين دروع الفريق',
+    descriptionAr: 'تقوية درع الصد التكتيكي وامتصاص نسبة من ضرر الشظايا والانفجارات المعادية.',
+    effectFormulaAr: (lvl) => `درع إضافي +${lvl * 20} وتقليل الضرر المباشر بنسبة ${lvl * 7}%`,
+    iconName: 'shield',
+    maxLevel: 5,
+    baseCostXP: 300,
+  },
+  {
+    key: 'airSupportLogistics',
+    titleAr: 'لوجستيات الدعم الجوي',
+    descriptionAr: 'تسريع شحن مقياس الدعم الجوي وتخفيض تكلفة نقاط الاستدعاء للغارات والاستطلاع.',
+    effectFormulaAr: (lvl) => `شحن المقياس أسرع بنسبة ${lvl * 20}% وتخفيض تكلفة الغارات بنسبة ${lvl * 12}%`,
+    iconName: 'plane',
+    maxLevel: 5,
+    baseCostXP: 400,
+  },
+  {
+    key: 'mountainSurvival',
+    titleAr: 'غريزة البقاء الجبلية',
+    descriptionAr: 'رفع كفاءة التمويه بين الأشجار والخنادق وتقليل المدى الذي يمكن للأعداء كشفك منه.',
+    effectFormulaAr: (lvl) => `تقليص مدى رصد الأعداء بنسبة ${lvl * 14}% وسرعة حركة أسرع في السواتر`,
+    iconName: 'mountain',
+    maxLevel: 5,
+    baseCostXP: 250,
+  },
+];
+
 interface GameState {
   totalXP: number;
   playerSkills: PlayerSkills;
+  leaderSkills: LeaderSkills;
   quests: RPGQuest[];
   inventory: RPGItem[];
   dailyChallenges: DailyChallenge[];
@@ -26,12 +89,15 @@ interface GameState {
   isMultiplayerOpen: boolean;
   isTrainingOpen: boolean;
   isWeaponCustomizationOpen: boolean;
+  isLeaderSkillsOpen: boolean;
 
   tacticalPoints: number;
   weaponUpgrades: WeaponUpgradeState;
 
   upgradeSkill: (skillKey: SkillKey) => void;
+  upgradeLeaderSkill: (skillKey: LeaderSkillKey) => void;
   setQuestCompleted: (questId: string) => void;
+  addTotalXP: (amount: number) => void;
   addTacticalPoints: (amount: number) => void;
   spendTacticalPoints: (amount: number) => boolean;
   purchaseAttachment: (weaponId: string, attachmentId: string) => void;
@@ -50,6 +116,8 @@ interface GameState {
   closeTraining: () => void;
   openWeaponCustomization: () => void;
   closeWeaponCustomization: () => void;
+  openLeaderSkills: () => void;
+  closeLeaderSkills: () => void;
 }
 
 const initialInventory: RPGItem[] = [
@@ -116,9 +184,18 @@ const initialChallenges: DailyChallenge[] = [
   },
 ];
 
+export const initialLeaderSkills: LeaderSkills = {
+  rapidHealing: 1,
+  sniperPrecision: 1,
+  squadFortification: 1,
+  airSupportLogistics: 1,
+  mountainSurvival: 1,
+};
+
 export const useGameStore = create<GameState>()((set, get) => ({
   totalXP: 2500,
   playerSkills: initialSkills,
+  leaderSkills: initialLeaderSkills,
   quests: initialQuests,
   inventory: initialInventory,
   dailyChallenges: initialChallenges,
@@ -147,6 +224,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
   isMultiplayerOpen: false,
   isTrainingOpen: false,
   isWeaponCustomizationOpen: false,
+  isLeaderSkillsOpen: false,
 
   tacticalPoints: 500,
   weaponUpgrades: {
@@ -178,6 +256,23 @@ export const useGameStore = create<GameState>()((set, get) => ({
     }));
   },
 
+  upgradeLeaderSkill: (skillKey) => {
+    const currentLevel = get().leaderSkills[skillKey] || 1;
+    if (currentLevel >= 5) return;
+
+    const skillInfo = LEADER_SKILLS_INFO.find(s => s.key === skillKey);
+    const cost = skillInfo ? skillInfo.baseCostXP * currentLevel : 300 * currentLevel;
+    if (get().totalXP < cost) return;
+
+    set((state) => ({
+      totalXP: state.totalXP - cost,
+      leaderSkills: {
+        ...state.leaderSkills,
+        [skillKey]: Math.min(5, currentLevel + 1),
+      },
+    }));
+  },
+
   setQuestCompleted: (questId) => {
     const quest = get().quests.find((q) => q.id === questId);
     if (!quest || quest.isCompleted) return;
@@ -189,6 +284,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
       ),
     }));
   },
+
+  addTotalXP: (amount) => set((state) => ({ totalXP: state.totalXP + amount })),
 
   addTacticalPoints: (amount) => set((state) => ({ tacticalPoints: state.tacticalPoints + amount })),
   
@@ -221,7 +318,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
 
     set((state) => {
       const weapon = state.weaponUpgrades[weaponId];
-      const newActive = { ...weapon.activeAttachments };
+      const newActive: Record<string, string | undefined> = { ...weapon.activeAttachments };
       
       // Toggle off if already active
       if (newActive[attachment.type] === attachmentId) {
@@ -235,7 +332,7 @@ export const useGameStore = create<GameState>()((set, get) => ({
           ...state.weaponUpgrades,
           [weaponId]: {
             ...weapon,
-            activeAttachments: newActive
+            activeAttachments: newActive as typeof weapon.activeAttachments
           }
         }
       };
@@ -275,6 +372,8 @@ export const useGameStore = create<GameState>()((set, get) => ({
   closeTraining: () => set({ isTrainingOpen: false }),
   openWeaponCustomization: () => set({ isWeaponCustomizationOpen: true }),
   closeWeaponCustomization: () => set({ isWeaponCustomizationOpen: false }),
+  openLeaderSkills: () => set({ isLeaderSkillsOpen: true }),
+  closeLeaderSkills: () => set({ isLeaderSkillsOpen: false }),
 }));
 
 export const ALL_ATTACHMENTS: WeaponAttachment[] = [

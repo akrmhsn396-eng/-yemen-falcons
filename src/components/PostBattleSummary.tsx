@@ -2,9 +2,10 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, Target, Zap, Shield, ChevronRight, 
-  RefreshCw, TrendingUp, Star, Award, Clock
+  RefreshCw, TrendingUp, Star, Award, Clock, Crosshair
 } from 'lucide-react';
 import { sound } from '../game/audio';
+import { useGameStore } from '../store/gameStore';
 
 interface PostBattleSummaryProps {
   isOpen: boolean;
@@ -24,11 +25,13 @@ export const PostBattleSummary: React.FC<PostBattleSummaryProps> = ({
   stats,
   provinceName,
 }) => {
+  const { addTotalXP } = useGameStore();
   if (!isOpen) return null;
 
   const xpReward = Math.floor(stats.kills * 15 + (stats.accuracy / 100) * 100 + stats.pointsEarned * 0.5);
 
   const handleContinue = () => {
+    addTotalXP(xpReward);
     sound.playSelect();
     onClose();
   };

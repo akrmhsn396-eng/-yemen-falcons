@@ -182,7 +182,7 @@ export const WeaponCustomizationModal: React.FC = () => {
                       key={att.id}
                       attachment={att}
                       isUnlocked={upgradeState.unlockedAttachments.includes(att.id)}
-                      isActive={upgradeState.activeAttachments[att.type] === att.id}
+                      isActive={(upgradeState.activeAttachments as Record<string, string | undefined>)[att.type] === att.id}
                       canAfford={tacticalPoints >= att.costPT}
                       onClick={() => handleAttachmentClick(att.id)}
                     />

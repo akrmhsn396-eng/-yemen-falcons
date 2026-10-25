@@ -7,6 +7,7 @@ import { InventoryModal } from './components/InventoryModal';
 import { DailyChallengesModal } from './components/DailyChallengesModal';
 import { TrainingMiniGameModal } from './components/TrainingMiniGameModal';
 import { WeaponCustomizationModal } from './components/WeaponCustomizationModal';
+import { LeaderSkillsModal } from './components/LeaderSkillsModal';
 import { BattleScreen } from './components/screens/BattleScreen';
 import { useGameStore } from './store/gameStore';
 import { useGameState } from './hooks/useGameState';
@@ -109,6 +110,7 @@ export default function App() {
       />
 
       <WeaponCustomizationModal />
+      <LeaderSkillsModal />
     </div>
   );
 }

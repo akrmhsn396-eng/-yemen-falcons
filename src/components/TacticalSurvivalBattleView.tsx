@@ -4,14 +4,13 @@ import {
   Shield, Zap, Swords, Compass, MapPin, Clock, Backpack, Scroll, 
   Settings, ChevronRight, Crosshair, Flame, Target, Trophy, AlertTriangle, RefreshCw,
   Activity, User, Target as TargetIcon, Shell, Star, Sparkles, Navigation, Radio, Plane, Scan,
-  Eye, ZapOff, Loader2, Send, MessageSquare
+  Eye, ZapOff, Loader2, Send, MessageSquare, Crown, Package, AlertCircle, Volume2
 } from 'lucide-react';
 import { FighterInstance, GameStats, RPGItem, RPGQuest, DailyChallenge } from '../types/game';
 import { VirtualControls } from './VirtualControls';
 import { sound } from '../game/audio';
 import { useGameStore, ALL_ATTACHMENTS } from '../store/gameStore';
 import { PostBattleSummary } from './PostBattleSummary';
-import { Tooltip } from 'lucide-react';
 
 interface TacticalSurvivalBattleViewProps {
   currentProvince: string;
@@ -76,6 +75,44 @@ interface DestructibleObject {
   height: number;
 }
 
+interface Vegetation {
+  id: number;
+  x: number;
+  y: number;
+  type: 'sidr' | 'qat' | 'shrub';
+  size: number;
+}
+
+interface DamageIndicator {
+  id: number;
+  angle: number;
+  timestamp: number;
+}
+
+interface JetFlyer {
+  id: number;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  currentX: number;
+  currentY: number;
+  targetX: number;
+  targetY: number;
+  progress: number;
+  bombsDropped: boolean;
+}
+
+interface SupplyPackage {
+  id: number;
+  x: number;
+  y: number;
+  targetY: number;
+  progress: number;
+  isLanded: boolean;
+  collected: boolean;
+}
+
 export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProps> = ({
   currentProvince,
   quests,
@@ -90,6 +127,7 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
   onReturnToTitle,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastPassiveTick = useRef(Date.now());
   const [isTouch, setIsTouch] = useState(false);
   const activeQuest = quests.find(q => !q.isCompleted) || quests[0];
 
@@ -97,21 +135,38 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
     tacticalPoints,
     addTacticalPoints,
     openWeaponCustomization,
-    weaponUpgrades
+    weaponUpgrades,
+    leaderSkills,
+    openLeaderSkills,
   } = useGameStore();
 
   // Player State
+  const maxArmorBase = 90 + ((leaderSkills?.squadFortification || 1) * 20);
   const [playerPos, setPlayerPos] = useState({ x: 500, y: 450 });
   const [playerHp, setPlayerHp] = useState(100);
-  const [playerArmor, setPlayerArmor] = useState(90);
+  const [playerArmor, setPlayerArmor] = useState(maxArmorBase);
   const [ammo, setAmmo] = useState(30);
   const [activeWeapon, setActiveWeapon] = useState<'akm' | 'rpg' | 'sniper'>('akm');
   const [kills, setKills] = useState(0);
   const [isReloading, setIsReloading] = useState(false);
   const [aimAngle, setAimAngle] = useState(0);
 
+  // Strategic Air Support Gauge & Resource Meter (0 - 100%)
+  const [airSupportMeter, setAirSupportMeter] = useState(55);
+  const [targetingMode, setTargetingMode] = useState<'airstrike' | 'recon' | 'supply_drop' | null>(null);
+  const [isReconActive, setIsReconActive] = useState(false);
+  const [reconTimer, setReconTimer] = useState(0);
+
   // Tactical Systems
   const [buildMode, setBuildMode] = useState<'watchtower' | 'trench' | null>(null);
+
+  // Tactical Stealth
+  const [isCamouflaged, setIsCamouflaged] = useState(false);
+
+  // Damage Direction Indicators & Mountain Contrast
+  const [damageIndicators, setDamageIndicators] = useState<DamageIndicator[]>([]);
+  const [lastDamageTime, setLastDamageTime] = useState(0);
+  const [isHighContrastMode, setIsHighContrastMode] = useState(true);
 
   // Game Stats Tracking
   const [shotsFired, setShotsFired] = useState(0);
@@ -123,8 +178,8 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<{ id: number; sender: string; text: string; type: 'system' | 'player' }[]>([
-    { id: 1, sender: 'القيادة', text: 'تم تأمين الموقع. بانتظار الأوامر.', type: 'system' },
-    { id: 2, sender: 'النظام', text: 'اضغط Enter لبدء الدردشة التكتيكية.', type: 'system' },
+    { id: 1, sender: 'القيادة العامة', text: 'تم تأمين القطاع العملياتي. جاهزية الدعم الجوي ومؤشرات الرصد نشطة.', type: 'system' },
+    { id: 2, sender: 'الرادار', text: 'اضغط Enter للدردشة التكتيكية • راقب مقياس الدعم الجوي في الأعلى.', type: 'system' },
   ]);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -144,6 +199,9 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
     effects: Effect[];
     structures: Structure[];
     destructibles: DestructibleObject[];
+    vegetation: Vegetation[];
+    jets: JetFlyer[];
+    supplies: SupplyPackage[];
     keys: { [key: string]: boolean };
     mouse: { x: number; y: number };
   }>({
@@ -163,6 +221,15 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
       { id: 104, x: 700, y: 800, type: 'crate', hp: 50, maxHp: 50, width: 40, height: 40 },
       { id: 105, x: 200, y: 850, type: 'fence', hp: 30, maxHp: 30, width: 80, height: 20 },
     ],
+    vegetation: [
+      { id: 201, x: 150, y: 150, type: 'sidr', size: 60 },
+      { id: 202, x: 800, y: 150, type: 'sidr', size: 70 },
+      { id: 203, x: 450, y: 750, type: 'qat', size: 50 },
+      { id: 204, x: 100, y: 600, type: 'shrub', size: 45 },
+      { id: 205, x: 900, y: 550, type: 'qat', size: 55 },
+    ],
+    jets: [],
+    supplies: [],
     keys: {},
     mouse: { x: 500, y: 450 },
   });
@@ -214,7 +281,7 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
       if (e.target !== canvasRef.current) return;
       
       if (targetingMode) {
-        confirmAirstrike(entitiesRef.current.mouse.x, entitiesRef.current.mouse.y);
+        confirmAirSupport(entitiesRef.current.mouse.x, entitiesRef.current.mouse.y);
       } else if (buildMode) {
         confirmBuild(entitiesRef.current.mouse.x, entitiesRef.current.mouse.y);
       } else {
@@ -256,6 +323,19 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
           x: Math.max(60, Math.min(canvas.width - 60, prev.x + dx)),
           y: Math.max(60, Math.min(canvas.height - 60, prev.y + dy)),
         }));
+
+        // Update Camouflage Status
+        let inCover = false;
+        const veg = (entitiesRef.current as any).vegetation as Vegetation[];
+        veg.forEach(v => {
+          if (Math.hypot(playerPos.x - v.x, playerPos.y - v.y) < v.size * 0.7) {
+            inCover = true;
+          }
+        });
+        if (inCover !== isCamouflaged) {
+          setIsCamouflaged(inCover);
+          if (inCover) addMessage('تم تفعيل التمويه التكتيكي. الرؤية محدودة للأعداء.', 'الاستخبارات', 'system');
+        }
 
         // --- HIGH FIDELITY BACKGROUND RENDER ---
         
@@ -364,8 +444,20 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
 
           // Check hit against player
           if (Math.hypot(b.x - playerPos.x, b.y - playerPos.y) < 30) {
+            // Directional damage indicator calculation
+            const hitAngle = Math.atan2(b.y - playerPos.y, b.x - playerPos.x);
+            setDamageIndicators(prev => [...prev.slice(-3), { id: Math.random(), angle: hitAngle, timestamp: Date.now() }]);
+            setLastDamageTime(Date.now());
+            sound.playDamageHit();
+
+            const fortLevel = leaderSkills?.squadFortification || 1;
+            const fortDmgRed = Math.max(0.60, 1 - (fortLevel * 0.07));
+            const rawDmg = (b.isRpg ? 24 : 7) * fortDmgRed;
+
+            setPlayerArmor(a => Math.max(0, a - rawDmg * 0.7));
             setPlayerHp(h => {
-              const newHp = Math.max(0, h - (b.isRpg ? 20 : 5));
+              const hpDmg = playerArmor > 0 ? rawDmg * 0.35 : rawDmg;
+              const newHp = Math.max(0, Math.round(h - hpDmg));
               if (newHp === 0 && !isGameOver) setIsGameOver(true);
               return newHp;
             });
@@ -380,8 +472,20 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
           for (let j = enemies.length - 1; j >= 0; j--) {
             const en = enemies[j];
             if (Math.hypot(b.x - en.x, b.y - en.y) < 35) {
-              en.hp -= b.isRpg ? 80 : 30;
-              entitiesRef.current.effects.push({ id: Math.random(), x: en.x, y: en.y, type: 'hit', life: 10, maxLife: 10 });
+              const sniperLvl = leaderSkills?.sniperPrecision || 1;
+              const isCrit = Math.random() < (0.15 + sniperLvl * 0.08);
+              let dmg = (b.isRpg ? 90 : 32) * (isReconActive ? 1.35 : 1);
+              if (isCrit) dmg *= 1.5;
+
+              en.hp -= Math.round(dmg);
+              entitiesRef.current.effects.push({ 
+                id: Math.random(), 
+                x: en.x, 
+                y: en.y, 
+                type: 'hit', 
+                life: 10, 
+                maxLife: 10 
+              });
               bulletHit = true;
               break;
             }
@@ -398,8 +502,9 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
                 if (d.hp <= 0) {
                   destructibles.splice(j, 1);
                   sound.playExplosion();
+                  setAirSupportMeter(m => Math.min(100, m + 4));
                   entitiesRef.current.effects.push({ id: Math.random(), x: d.x, y: d.y, type: 'explosion', life: 15, maxLife: 15 });
-                  addMessage(`تم تدمير ${d.type === 'barrel' ? 'برميل' : d.type === 'crate' ? 'صندوق' : 'سياج'} ميداني.`, 'النظام', 'system');
+                  addMessage(`تم تدمير ${d.type === 'barrel' ? 'برميل' : d.type === 'crate' ? 'صندوق' : 'سياج'} ميداني. (+4% دعم جوي)`, 'النظام', 'system');
                 }
                 break;
               }
@@ -423,6 +528,7 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
             setKills(k => k + 1); 
             addTacticalPoints(25);
             setEarnedPT(p => p + 25);
+            setAirSupportMeter(m => Math.min(100, m + 8));
             sound.playExplosion();
             entitiesRef.current.effects.push({ id: Math.random(), x: en.x, y: en.y, type: 'explosion', life: 25, maxLife: 25 });
             setTimeout(() => {
@@ -483,8 +589,10 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
           en.x += Math.cos(angleToTarget) * moveSpeed;
           en.y += Math.sin(angleToTarget) * moveSpeed;
 
-          // 3. Coordinated Attack (Firing)
-          if (distToPlayer < 400 && currentTime - en.lastFireTime > 2000) {
+          // 3. Coordinated Attack (Firing) - Modified for Camouflage
+          const camoSkill = leaderSkills?.mountainSurvival || 1;
+          const detectionRange = isCamouflaged ? Math.max(50, 110 - camoSkill * 12) : 400;
+          if (distToPlayer < detectionRange && currentTime - en.lastFireTime > 2000) {
             en.lastFireTime = currentTime;
             const bulletSpeed = 6;
             entitiesRef.current.bullets.push({
@@ -495,7 +603,6 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
               vy: Math.sin(angleToTarget) * bulletSpeed,
               isRpg: en.type === 'armored_car' && Math.random() > 0.7
             });
-            // Damage player if bullet logic hit was here, but we use bullet collision below
           }
 
           // 4. Rendering Enemy
@@ -510,13 +617,79 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
           ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 20, 20, 10, 0, 0, Math.PI*2); ctx.fill();
           ctx.fillStyle = en.type === 'armored_car' ? '#4a5568' : '#ef4444'; 
           ctx.beginPath(); ctx.arc(0, 0, en.type === 'armored_car' ? 25 : 18, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+          ctx.strokeStyle = isHighContrastMode ? '#ffffff' : 'rgba(255,255,255,0.7)'; 
+          ctx.lineWidth = isHighContrastMode ? 4 : 2; 
+          ctx.stroke();
+
+          // Recon Target Locks Brackets
+          if (isReconActive) {
+            ctx.save();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2.5;
+            const b = 32;
+            ctx.beginPath();
+            // Top-left
+            ctx.moveTo(-b, -b + 10); ctx.lineTo(-b, -b); ctx.lineTo(-b + 10, -b);
+            // Top-right
+            ctx.moveTo(b - 10, -b); ctx.lineTo(b, -b); ctx.lineTo(b, -b + 10);
+            // Bottom-left
+            ctx.moveTo(-b, b - 10); ctx.lineTo(-b, b); ctx.lineTo(-b + 10, b);
+            // Bottom-right
+            ctx.moveTo(b - 10, b); ctx.lineTo(b, b); ctx.lineTo(b, b - 10);
+            ctx.stroke();
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = 'bold 8px Cairo';
+            ctx.fillText(`LOCK [${Math.round(distToPlayer)}m]`, 0, b + 12);
+            ctx.restore();
+          }
           
           // HP Bar
-          ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(-22, -32, 44, 5);
-          ctx.fillStyle = '#22c55e'; ctx.fillRect(-22, -32, (en.hp / en.maxHp) * 44, 5);
+          ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(-22, -32, 44, 6);
+          ctx.fillStyle = '#22c55e'; ctx.fillRect(-22, -32, (en.hp / en.maxHp) * 44, 6);
+          if (isHighContrastMode) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(-22, -32, 44, 6);
+          }
           ctx.restore();
         }
+
+        // --- DRAW VEGETATION ---
+        const vegList = (entitiesRef.current as any).vegetation as Vegetation[];
+        vegList.forEach(v => {
+          ctx.save();
+          ctx.translate(v.x, v.y);
+          
+          const drawLeaf = (ox: number, oy: number, s: number, color: string) => {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.ellipse(ox, oy, s, s*0.6, Math.random() * Math.PI, 0, Math.PI*2);
+            ctx.fill();
+          };
+
+          if (v.type === 'sidr') {
+            // Sidr tree (Yemeni Jujube)
+            ctx.fillStyle = '#451a03';
+            ctx.fillRect(-5, -10, 10, 30);
+            for (let i = 0; i < 15; i++) {
+              drawLeaf((Math.random()-0.5)*v.size, (Math.random()-0.5)*v.size, 15 + Math.random()*10, '#065f46');
+              drawLeaf((Math.random()-0.5)*v.size, (Math.random()-0.5)*v.size, 10 + Math.random()*5, '#064e3b');
+            }
+          } else if (v.type === 'qat') {
+            // Qat shrub
+            for (let i = 0; i < 12; i++) {
+              drawLeaf((Math.random()-0.5)*v.size, (Math.random()-0.5)*v.size, 12, '#059669');
+              drawLeaf((Math.random()-0.5)*v.size, (Math.random()-0.5)*v.size, 8, '#34d399');
+            }
+          } else {
+            // Mountain shrub
+            for (let i = 0; i < 10; i++) {
+              drawLeaf((Math.random()-0.5)*v.size, (Math.random()-0.5)*v.size, 10, '#166534');
+            }
+          }
+          ctx.restore();
+        });
 
         // --- DRAW DESTRUCTIBLES ---
         destructibles.forEach(d => {
@@ -565,6 +738,194 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
           ctx.restore();
         });
 
+        // --- PASSIVE TICK (HP REGEN & AIR GAUGE RECHARGE) ---
+        const nowTime = Date.now();
+        if (nowTime - lastPassiveTick.current > 2000) {
+          lastPassiveTick.current = nowTime;
+
+          // Air Support gauge recharge
+          const logisticsLvl = leaderSkills?.airSupportLogistics || 1;
+          setAirSupportMeter(m => Math.min(100, +(m + 1.2 * (1 + logisticsLvl * 0.25)).toFixed(1)));
+
+          // Leader skill rapid healing
+          const healingLvl = leaderSkills?.rapidHealing || 1;
+          const healAmount = inCover ? (2.5 + healingLvl * 1.5) : (1 + healingLvl * 0.8);
+          setPlayerHp(hp => Math.min(100, Math.round(hp + healAmount)));
+
+          // Recon timer decrement
+          if (isReconActive) {
+            setReconTimer(t => {
+              if (t <= 2) {
+                setIsReconActive(false);
+                addMessage('انتهت مدة استطلاع درون الاستكشاف UAV.', 'الاستخبارات', 'system');
+                return 0;
+              }
+              return t - 2;
+            });
+          }
+        }
+
+        // --- UPDATE & DRAW JETS (AIR SUPPORT) ---
+        const jets = entitiesRef.current.jets;
+        for (let j = jets.length - 1; j >= 0; j--) {
+          const jet = jets[j];
+          jet.progress += 0.024;
+          jet.currentX = jet.startX + (jet.endX - jet.startX) * jet.progress;
+          jet.currentY = jet.startY + (jet.endY - jet.startY) * jet.progress;
+
+          if (jet.progress >= 0.45 && !jet.bombsDropped) {
+            jet.bombsDropped = true;
+            for (let b = 0; b < 4; b++) {
+              setTimeout(() => {
+                const ox = (Math.random() - 0.5) * 140;
+                const oy = (Math.random() - 0.5) * 140;
+                sound.playExplosion();
+                entitiesRef.current.effects.push({
+                  id: Math.random(),
+                  x: jet.targetX + ox,
+                  y: jet.targetY + oy,
+                  type: 'airstrike',
+                  life: 45,
+                  maxLife: 45,
+                });
+                entitiesRef.current.enemies.forEach(en => {
+                  if (Math.hypot(en.x - (jet.targetX + ox), en.y - (jet.targetY + oy)) < 130) {
+                    en.hp -= 180;
+                  }
+                });
+                entitiesRef.current.destructibles.forEach(d => {
+                  if (Math.hypot(d.x - (jet.targetX + ox), d.y - (jet.targetY + oy)) < 130) {
+                    d.hp -= 150;
+                  }
+                });
+              }, b * 120);
+            }
+          }
+
+          // Draw Supersonic Jet
+          ctx.save();
+          ctx.translate(jet.currentX, jet.currentY);
+          const jetAngle = Math.atan2(jet.endY - jet.startY, jet.endX - jet.startX);
+          ctx.rotate(jetAngle);
+
+          // Sonic shockwave cone
+          ctx.strokeStyle = 'rgba(79, 209, 197, 0.4)';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(-20, 0, 50, Math.PI * 0.7, Math.PI * 1.3);
+          ctx.stroke();
+
+          // Afterburner flames
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.moveTo(-35, -5);
+          ctx.lineTo(-65 - Math.random() * 25, 0);
+          ctx.lineTo(-35, 5);
+          ctx.fill();
+
+          // Jet fuselage
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.moveTo(40, 0);
+          ctx.lineTo(-25, -28);
+          ctx.lineTo(-15, -8);
+          ctx.lineTo(-35, -8);
+          ctx.lineTo(-30, 0);
+          ctx.lineTo(-35, 8);
+          ctx.lineTo(-15, 8);
+          ctx.lineTo(-25, 28);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.strokeStyle = '#4fd1c5';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Cockpit canopy
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.ellipse(10, 0, 10, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          if (jet.progress >= 1.1) {
+            jets.splice(j, 1);
+          }
+        }
+
+        // --- UPDATE & DRAW SUPPLY PACKAGES ---
+        const supplies = entitiesRef.current.supplies;
+        for (let s = supplies.length - 1; s >= 0; s--) {
+          const sup = supplies[s];
+          if (!sup.isLanded) {
+            sup.progress += 0.015;
+            sup.y = sup.y + (sup.targetY - sup.y) * 0.05;
+            if (Math.abs(sup.y - sup.targetY) < 6 || sup.progress >= 1) {
+              sup.y = sup.targetY;
+              sup.isLanded = true;
+              sound.playDigOrBuild();
+            }
+          }
+
+          ctx.save();
+          ctx.translate(sup.x, sup.y);
+
+          if (!sup.isLanded) {
+            // Parachute
+            ctx.fillStyle = '#059669';
+            ctx.beginPath();
+            ctx.arc(0, -50, 35, Math.PI, 0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Ropes
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-30, -50); ctx.lineTo(-10, -15);
+            ctx.moveTo(30, -50); ctx.lineTo(10, -15);
+            ctx.moveTo(0, -50); ctx.lineTo(0, -15);
+            ctx.stroke();
+          } else {
+            // Pulsing beacon ring
+            const pulse = (Date.now() % 1000) / 1000;
+            ctx.strokeStyle = `rgba(79, 209, 197, ${1 - pulse})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 25 + pulse * 20, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          // Crate Body
+          ctx.fillStyle = '#065f46';
+          ctx.fillRect(-16, -16, 32, 32);
+          ctx.strokeStyle = '#4fd1c5';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-16, -16, 32, 32);
+          // Medical cross
+          ctx.fillStyle = '#4fd1c5';
+          ctx.fillRect(-9, -3, 18, 6);
+          ctx.fillRect(-3, -9, 6, 18);
+          ctx.restore();
+
+          // Check player collection
+          if (sup.isLanded && !sup.collected) {
+            if (Math.hypot(playerPos.x - sup.x, playerPos.y - sup.y) < 45) {
+              sup.collected = true;
+              setPlayerHp(hp => Math.min(100, hp + 50));
+              setPlayerArmor(ar => Math.min(maxArmorBase, ar + 50));
+              setAmmo(30);
+              addTacticalPoints(75);
+              sound.playSectorCapture();
+              addMessage('تم استلام الإنزال الجوي! (+50 HP، +50 درع، ذخيرة كاملة، +75 PT)', 'الإمداد الجوي', 'system');
+              supplies.splice(s, 1);
+            }
+          }
+        }
+
         const effects = entitiesRef.current.effects;
         for (let i = effects.length - 1; i >= 0; i--) {
           const ef = effects[i]; ef.life--;
@@ -572,8 +933,8 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
           const ratio = ef.life / maxL;
           ctx.save(); ctx.translate(ef.x, ef.y);
           if (ef.type === 'recon') {
-            ctx.strokeStyle = `rgba(34, 197, 94, ${ratio})`;
-            ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, (1 - ratio) * 200, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = `rgba(56, 189, 248, ${ratio})`;
+            ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, (1 - ratio) * 220, 0, Math.PI * 2); ctx.stroke();
           } else if (ef.type === 'hit') {
             ctx.fillStyle = `rgba(255, 255, 255, ${ratio})`;
             ctx.beginPath(); ctx.arc(0, 0, (1 - ratio) * 30, 0, Math.PI * 2); ctx.fill();
@@ -588,6 +949,7 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
         }
 
         ctx.save(); ctx.translate(playerPos.x, playerPos.y); ctx.rotate(aimAngle);
+        if (isCamouflaged) ctx.globalAlpha = 0.4;
         ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 24, 24, 12, 0, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = '#27272a'; ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#4fd1c5'; ctx.lineWidth = 4; ctx.stroke();
@@ -597,7 +959,9 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
 
         const m = entitiesRef.current.mouse;
         const isActionActive = targetingMode || buildMode;
-        const actionColor = targetingMode ? (targetingMode === 'airstrike' ? '#ef4444' : '#22c55e') : '#4fd1c5';
+        const actionColor = targetingMode 
+          ? (targetingMode === 'airstrike' ? '#ef4444' : targetingMode === 'supply_drop' ? '#38bdf8' : '#22c55e') 
+          : '#4fd1c5';
         
         ctx.strokeStyle = isActionActive ? actionColor : 'rgba(79, 209, 197, 0.8)';
         ctx.lineWidth = 2; ctx.setLineDash(isActionActive ? [5, 5] : []);
@@ -610,7 +974,7 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
           ctx.beginPath(); ctx.moveTo(m.x, m.y - 25); ctx.lineTo(m.x, m.y - 10); ctx.stroke();
           ctx.beginPath(); ctx.moveTo(m.x, m.y + 25); ctx.lineTo(m.x, m.y + 10); ctx.stroke();
         } else {
-          ctx.fillStyle = targetingMode === 'airstrike' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(79, 209, 197, 0.1)';
+          ctx.fillStyle = targetingMode === 'airstrike' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(79, 209, 197, 0.12)';
           ctx.fill();
         }
 
@@ -698,32 +1062,70 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
     }
   };
 
-  const handleCallSupport = (type: 'airstrike' | 'recon') => {
-    const cost = type === 'airstrike' ? 250 : 100;
-    if (tacticalPoints < cost) { sound.playClick(); return; }
-    setTargetingMode(type); sound.playSelect();
+  const handleCallSupport = (type: 'airstrike' | 'recon' | 'supply_drop') => {
+    const logisticsLvl = leaderSkills?.airSupportLogistics || 1;
+    const costDiscount = Math.max(0.65, 1 - (logisticsLvl - 1) * 0.08);
+    const baseCost = type === 'airstrike' ? 70 : type === 'supply_drop' ? 40 : 25;
+    const finalCost = Math.round(baseCost * costDiscount);
+
+    if (airSupportMeter < finalCost) {
+      sound.playClick();
+      addMessage(`مقياس الدعم الجوي غير كافٍ (المطلوب: ${finalCost}%، المتوفر: ${Math.round(airSupportMeter)}%).`, 'العمليات الجوية', 'system');
+      return;
+    }
+    setTargetingMode(type);
+    sound.playSelect();
   };
 
-  const confirmAirstrike = (x: number, y: number) => {
+  const confirmAirSupport = (x: number, y: number) => {
     if (!targetingMode) return;
     const type = targetingMode;
-    const cost = type === 'airstrike' ? 250 : 100;
-    setTacticalPoints(p => p - cost); setTargetingMode(null);
-    sound.playExplosion();
+    const logisticsLvl = leaderSkills?.airSupportLogistics || 1;
+    const costDiscount = Math.max(0.65, 1 - (logisticsLvl - 1) * 0.08);
+    const baseCost = type === 'airstrike' ? 70 : type === 'supply_drop' ? 40 : 25;
+    const finalCost = Math.round(baseCost * costDiscount);
+
+    setAirSupportMeter(m => Math.max(0, m - finalCost));
+    setTargetingMode(null);
+
     if (type === 'airstrike') {
-      addMessage('تم طلب غارة جوية على الإحداثيات المحددة.', 'القيادة', 'system');
-      entitiesRef.current.effects.push({ id: Math.random(), x, y, type: 'airstrike', life: 60, maxLife: 60 });
-      entitiesRef.current.enemies.forEach(en => {
-        if (Math.hypot(en.x - x, en.y - y) < 120) {
-          en.hp -= 200;
-          if (en.hp <= 0) { 
-            en.hp = 0; // mark dead
-          }
-        }
+      sound.playJetFlyover();
+      sound.playAirSiren();
+      addMessage('تم إطلاق مقاتلة نفاثة لتنفيذ غارة جوية على الإحداثيات المحددة!', 'العمليات الجوية', 'system');
+      
+      const angle = -0.4;
+      const dist = 900;
+      entitiesRef.current.jets.push({
+        id: Math.random(),
+        startX: x - Math.cos(angle) * dist,
+        startY: y - Math.sin(angle) * dist,
+        endX: x + Math.cos(angle) * dist,
+        endY: y + Math.sin(angle) * dist,
+        currentX: x - Math.cos(angle) * dist,
+        currentY: y - Math.sin(angle) * dist,
+        targetX: x,
+        targetY: y,
+        progress: 0,
+        bombsDropped: false,
       });
-    } else {
-      addMessage('بدء عملية المسح الاستطلاعي للمنطقة.', 'الاستخبارات', 'system');
-      entitiesRef.current.effects.push({ id: Math.random(), x, y, type: 'recon', life: 80, maxLife: 80 });
+    } else if (type === 'recon') {
+      sound.playArtilleryLaunch();
+      setIsReconActive(true);
+      setReconTimer(14);
+      addMessage('تم تفعيل استطلاع درون UAV: كشف وتحديد جميع مواقع الأعداء ونقاط ضعفهم!', 'الاستخبارات', 'system');
+      entitiesRef.current.effects.push({ id: Math.random(), x, y, type: 'recon', life: 90, maxLife: 90 });
+    } else if (type === 'supply_drop') {
+      sound.playArtilleryLaunch();
+      addMessage('جارٍ إنزال حزمة إمدادات جوية تكتيكية بالمظلة في الموقع المحدد...', 'الإمداد الجوي', 'system');
+      entitiesRef.current.supplies.push({
+        id: Math.random(),
+        x,
+        y: 0,
+        targetY: y,
+        progress: 0,
+        isLanded: false,
+        collected: false,
+      });
     }
   };
 
@@ -737,7 +1139,7 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
     if (!buildMode) return;
     const type = buildMode;
     const cost = type === 'watchtower' ? 150 : 50;
-    setTacticalPoints(p => p - cost);
+    addTacticalPoints(-cost);
     setBuildMode(null);
     sound.playSelect();
     
@@ -760,6 +1162,34 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full cursor-none z-0" />
       <div className="absolute inset-0 z-50 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
 
+      {/* Directional Damage Hit Indicators & Blood Vignette */}
+      {Date.now() - lastDamageTime < 650 && (
+        <div className="absolute inset-0 pointer-events-none z-40 border-[8px] border-red-600/70 shadow-[inset_0_0_120px_rgba(239,68,68,0.55)] animate-pulse" />
+      )}
+
+      {/* Directional Chevrons */}
+      <div className="absolute inset-0 pointer-events-none z-40 flex items-center justify-center overflow-hidden">
+        {damageIndicators.map(ind => {
+          const age = Date.now() - ind.timestamp;
+          if (age > 1200) return null;
+          const opacity = Math.max(0, 1 - age / 1200);
+          const deg = (ind.angle * 180) / Math.PI + 90;
+          return (
+            <div
+              key={ind.id}
+              className="absolute flex flex-col items-center justify-center pointer-events-none transition-opacity"
+              style={{
+                transform: `rotate(${deg}deg) translateY(-150px)`,
+                opacity,
+              }}
+            >
+              <div className="w-0 h-0 border-l-[16px] border-l-transparent border-r-[16px] border-r-transparent border-b-[26px] border-b-red-600 drop-shadow-[0_0_14px_rgba(239,68,68,1)] animate-bounce" />
+              <div className="w-10 h-1.5 bg-red-500 rounded-full mt-1 shadow-[0_0_10px_rgba(239,68,68,1)]" />
+            </div>
+          );
+        })}
+      </div>
+
       <AnimatePresence>
         {targetingMode && (
           <motion.div 
@@ -769,7 +1199,11 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
             <div className="bg-[#0b1220]/90 px-10 py-6 rounded-[2.5rem] border border-[#4fd1c5]/50 shadow-[0_0_50px_rgba(79,209,197,0.2)] text-center space-y-4">
               <div className="flex justify-center"><Loader2 className="w-10 h-10 text-[#4fd1c5] animate-spin" /></div>
               <h3 className="text-3xl font-black text-[#4fd1c5] uppercase tracking-tighter">
-                {targetingMode === 'airstrike' ? 'تأكيد إحداثيات الغارة' : 'تأكيد منطقة الاستطلاع'}
+                {targetingMode === 'airstrike' 
+                  ? 'تأكيد إحداثيات الغارة النفاثة' 
+                  : targetingMode === 'supply_drop' 
+                  ? 'تأكيد موقع إنزال المظلة' 
+                  : 'تأكيد منطقة استطلاع درون UAV'}
               </h3>
               <p className="text-stone-400 font-bold text-sm">اضغط على الخريطة لتوجيه الدعم • ESC للإلغاء</p>
             </div>
@@ -793,10 +1227,16 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
       </AnimatePresence>
 
       <div className="absolute inset-0 z-10 pointer-events-none p-6 sm:p-10 flex flex-col justify-between">
-        <div className="flex justify-between items-start w-full">
+        <div className="flex justify-between items-start w-full gap-4">
           <motion.div initial={{ x: -100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="flex flex-col gap-4 pointer-events-auto">
             <div className="bg-[#0b1220]/60 backdrop-blur-xl border border-white/10 rounded-[1.5rem] p-5 w-72 shadow-2xl relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-1.5 h-full bg-[#4fd1c5] shadow-[0_0_15px_rgba(79,209,197,0.5)]" />
+              {isCamouflaged && (
+                <div className="absolute top-2 left-2 flex items-center gap-1 bg-[#4fd1c5]/20 px-2 py-0.5 rounded-full border border-[#4fd1c5]/40 animate-pulse">
+                  <Eye className="w-3 h-3 text-[#4fd1c5]" />
+                  <span className="text-[8px] font-black text-[#4fd1c5] uppercase">Camouflaged</span>
+                </div>
+              )}
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-[#4fd1c5]/20 rounded-lg"><Navigation className="w-5 h-5 text-[#4fd1c5]" /></div>
                 <span className="text-white font-black text-xl tracking-tighter">القطاع العملياتي</span>
@@ -816,6 +1256,73 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
                 <div className="text-white text-sm font-black leading-snug">{activeQuest.titleAr}</div>
               </motion.div>
             )}
+          </motion.div>
+
+          {/* Strategic Air Support Gauge & Controls */}
+          <motion.div initial={{ y: -50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex flex-col items-center pointer-events-auto bg-[#0b1220]/80 backdrop-blur-xl border border-white/10 rounded-2xl px-6 py-3 shadow-2xl space-y-2">
+            <div className="flex items-center justify-between w-full gap-4">
+              <div className="flex items-center gap-2 text-xs font-black text-[#4fd1c5]">
+                <Plane className="w-4 h-4 text-[#4fd1c5]" />
+                <span>الدعم الجوي التكتيكي</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono font-bold text-stone-200">{Math.round(airSupportMeter)}%</span>
+                <button
+                  onClick={() => setIsHighContrastMode(v => !v)}
+                  title="تبديل فلتر التباين الجبلي"
+                  className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-all ${
+                    isHighContrastMode ? 'bg-[#4fd1c5]/20 text-[#4fd1c5] border-[#4fd1c5]/50' : 'bg-white/5 text-stone-400 border-white/10'
+                  }`}
+                >
+                  {isHighContrastMode ? 'تباين جبلي: نشط' : 'تباين عادي'}
+                </button>
+              </div>
+            </div>
+
+            <div className="w-72 h-2.5 bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/5">
+              <motion.div 
+                animate={{ width: `${Math.min(100, Math.max(0, airSupportMeter))}%` }} 
+                className="h-full bg-gradient-to-r from-teal-500 via-cyan-400 to-emerald-400 rounded-full shadow-[0_0_10px_rgba(79,209,197,0.8)]" 
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={() => handleCallSupport('recon')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-[10px] font-black transition-all ${
+                  airSupportMeter >= 25 
+                    ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border-blue-500/40 active:scale-95' 
+                    : 'bg-stone-900/40 text-stone-600 border-white/5 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <Scan className="w-3.5 h-3.5" />
+                <span>درون UAV</span>
+              </button>
+
+              <button
+                onClick={() => handleCallSupport('airstrike')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-[10px] font-black transition-all ${
+                  airSupportMeter >= 70 
+                    ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/40 active:scale-95' 
+                    : 'bg-stone-900/40 text-stone-600 border-white/5 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <Plane className="w-3.5 h-3.5" />
+                <span>قصف نفاث</span>
+              </button>
+
+              <button
+                onClick={() => handleCallSupport('supply_drop')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border text-[10px] font-black transition-all ${
+                  airSupportMeter >= 40 
+                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/40 active:scale-95' 
+                    : 'bg-stone-900/40 text-stone-600 border-white/5 opacity-50 cursor-not-allowed'
+                }`}
+              >
+                <Package className="w-3.5 h-3.5" />
+                <span>إنزال إمداد</span>
+              </button>
+            </div>
           </motion.div>
 
           <motion.div initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="flex flex-col items-end gap-5 pointer-events-auto">
@@ -964,6 +1471,7 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
               <MenuButton onClick={onOpenInventory} icon={<Backpack className="w-6 h-6" />} label="العتاد" color="teal" />
               <MenuButton onClick={onOpenQuestLog} icon={<Scroll className="w-6 h-6" />} label="المهام" color="blue" />
               <MenuButton onClick={onOpenDailyChallenges} icon={<Trophy className="w-6 h-6" />} label="التحديات" color="purple" isAlert />
+              <MenuButton onClick={openLeaderSkills} icon={<Crown className="w-6 h-6" />} label="مهارات القائد" color="teal" />
             </div>
           </div>
           <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-black/80 backdrop-blur-3xl border border-white/10 rounded-[2rem] px-10 py-6 flex items-center gap-12 shadow-[0_20px_50px_rgba(0,0,0,0.5)] pointer-events-auto">
@@ -988,7 +1496,7 @@ export const TacticalSurvivalBattleView: React.FC<TacticalSurvivalBattleViewProp
             }}
             onAction={() => {
               if (isGameOver) return;
-              targetingMode ? confirmAirstrike(entitiesRef.current.mouse.x, entitiesRef.current.mouse.y) : fireWeapon();
+              targetingMode ? confirmAirSupport(entitiesRef.current.mouse.x, entitiesRef.current.mouse.y) : fireWeapon();
             }}
             onStopBlock={() => {}}
           />

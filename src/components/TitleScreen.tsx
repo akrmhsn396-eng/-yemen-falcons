@@ -1,7 +1,7 @@
-import React from 'react';
-import { Play, Globe, Settings, ShoppingBag, UserCheck, Sparkles, ChevronRight, Swords, Target, Info } from 'lucide-react';
+import { Play, Globe, Settings, ShoppingBag, UserCheck, Sparkles, ChevronRight, Swords, Target, Info, Crown } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 import { motion } from 'motion/react';
+import { useGameStore } from '../store/gameStore';
 
 interface TitleScreenProps {
   onStartQuickMatch: () => void;
@@ -20,6 +20,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   onOpenSettingsStore,
   onOpenTechSpec,
 }) => {
+  const { openLeaderSkills } = useGameStore();
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-between p-6 sm:p-12 font-['Cairo',sans-serif] dir-rtl select-none text-white overflow-hidden pointer-events-none">
       {/* Cinematic Background Elements */}
@@ -66,6 +67,15 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
 
         <div className="flex items-center gap-4">
           <PWAInstallButton />
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={openLeaderSkills}
+            className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-[#4fd1c5]/15 border border-[#4fd1c5]/40 hover:bg-[#4fd1c5]/25 text-[#4fd1c5] hover:text-white transition-all backdrop-blur-xl cursor-pointer group shadow-lg"
+          >
+            <Crown className="w-5 h-5 text-yellow-400 group-hover:scale-110 transition-transform" />
+            <span className="text-xs font-black tracking-wider">مهارات القائد</span>
+          </motion.button>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

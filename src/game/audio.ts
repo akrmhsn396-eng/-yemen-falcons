@@ -262,6 +262,79 @@ class SoundEngine {
     osc.start();
     osc.stop(this.ctx.currentTime + 0.25);
   }
+
+  public playJetFlyover() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    // Filtered noise with Doppler sweep
+    const bufferSize = this.ctx.sampleRate * 1.5;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(150, this.ctx.currentTime);
+    filter.frequency.exponentialRampToValueAtTime(1400, this.ctx.currentTime + 0.6);
+    filter.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 1.5);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + 0.6);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.5);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    noise.start();
+  }
+
+  public playAirSiren() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(450, this.ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(750, this.ctx.currentTime + 0.4);
+    osc.frequency.linearRampToValueAtTime(450, this.ctx.currentTime + 0.8);
+    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.8);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.8);
+  }
+
+  public playDamageHit() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+
+    // Punchy low impact thump
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.15);
+  }
 }
 
 export const sound = new SoundEngine();
