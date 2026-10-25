@@ -23,11 +23,11 @@ export const QuestLogModal: React.FC<QuestLogModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-stone-900 p-6 text-white"
+        className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[#0b1220] p-6 text-white"
       >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#4fd1c5]/20 text-[#4fd1c5]">
               <MapPinned className="h-5 w-5" />
             </div>
             <div>
@@ -53,7 +53,7 @@ export const QuestLogModal: React.FC<QuestLogModalProps> = ({
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-400">
+                    <span className="rounded-full bg-[#4fd1c5]/10 px-2 py-0.5 text-[10px] font-bold text-[#4fd1c5]">
                       {quest.provinceAr}
                     </span>
                     <span className="text-xs text-stone-400">مهمة</span>
@@ -69,7 +69,7 @@ export const QuestLogModal: React.FC<QuestLogModalProps> = ({
                   className={`rounded-2xl px-4 py-2 text-xs font-black transition ${
                     quest.isCompleted
                       ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-amber-500 text-stone-950 hover:bg-amber-400'
+                      : 'bg-[#4fd1c5] text-[#0b1220] hover:bg-[#7ee7d0]'
                   }`}
                 >
                   {quest.isCompleted ? 'مكتملة' : 'إكمال'}
@@ -78,7 +78,7 @@ export const QuestLogModal: React.FC<QuestLogModalProps> = ({
 
               <div className="mt-3 flex items-center justify-between text-xs text-stone-300">
                 <span>مكافأة XP</span>
-                <span className="font-black text-amber-400">{quest.rewardXP} XP</span>
+                <span className="font-black text-[#4fd1c5]">{quest.rewardXP} XP</span>
               </div>
             </div>
           ))}

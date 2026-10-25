@@ -24,9 +24,20 @@ interface GameState {
   isInventoryOpen: boolean;
   isDailyChallengesOpen: boolean;
   isMultiplayerOpen: boolean;
+  isTrainingOpen: boolean;
+  isWeaponCustomizationOpen: boolean;
+
+  tacticalPoints: number;
+  weaponUpgrades: WeaponUpgradeState;
 
   upgradeSkill: (skillKey: SkillKey) => void;
   setQuestCompleted: (questId: string) => void;
+  addTacticalPoints: (amount: number) => void;
+  spendTacticalPoints: (amount: number) => boolean;
+  purchaseAttachment: (weaponId: string, attachmentId: string) => void;
+  equipAttachment: (weaponId: string, attachmentId: string) => void;
+  upgradeWeaponStat: (weaponId: string, stat: 'reloadSpeed' | 'damage' | 'accuracy') => void;
+
   openCustomization: () => void;
   closeCustomization: () => void;
   openQuestLog: () => void;
@@ -35,6 +46,10 @@ interface GameState {
   closeInventory: () => void;
   openDailyChallenges: () => void;
   closeDailyChallenges: () => void;
+  openTraining: () => void;
+  closeTraining: () => void;
+  openWeaponCustomization: () => void;
+  closeWeaponCustomization: () => void;
 }
 
 const initialInventory: RPGItem[] = [
@@ -73,6 +88,11 @@ const initialQuests: RPGQuest[] = [
     isCompleted: false,
     rewardXP: 300,
   },
+];
+
+const initialSectors = [
+  { id: 's1', nameAr: 'بوابة باب اليمن', controlledBy: 'neutral', progress: 0 },
+  { id: 's2', nameAr: 'الميناء الاستراتيجي', controlledBy: 'player', progress: 100 },
 ];
 
 const initialChallenges: DailyChallenge[] = [
@@ -125,6 +145,22 @@ export const useGameStore = create<GameState>()((set, get) => ({
   isInventoryOpen: false,
   isDailyChallengesOpen: false,
   isMultiplayerOpen: false,
+  isTrainingOpen: false,
+  isWeaponCustomizationOpen: false,
+
+  tacticalPoints: 500,
+  weaponUpgrades: {
+    'i1': { // AKM
+      unlockedAttachments: [],
+      activeAttachments: {},
+      levels: { reloadSpeed: 1, damage: 1, accuracy: 1 }
+    },
+    'i2': { // RPG-7
+      unlockedAttachments: [],
+      activeAttachments: {},
+      levels: { reloadSpeed: 1, damage: 1, accuracy: 1 }
+    }
+  },
 
   upgradeSkill: (skillKey) => {
     const currentLevel = get().playerSkills[skillKey];
@@ -154,6 +190,79 @@ export const useGameStore = create<GameState>()((set, get) => ({
     }));
   },
 
+  addTacticalPoints: (amount) => set((state) => ({ tacticalPoints: state.tacticalPoints + amount })),
+  
+  spendTacticalPoints: (amount) => {
+    if (get().tacticalPoints < amount) return false;
+    set((state) => ({ tacticalPoints: state.tacticalPoints - amount }));
+    return true;
+  },
+
+  purchaseAttachment: (weaponId, attachmentId) => {
+    const attachment = ALL_ATTACHMENTS.find(a => a.id === attachmentId);
+    if (!attachment) return;
+
+    if (get().spendTacticalPoints(attachment.costPT)) {
+      set((state) => ({
+        weaponUpgrades: {
+          ...state.weaponUpgrades,
+          [weaponId]: {
+            ...state.weaponUpgrades[weaponId],
+            unlockedAttachments: [...state.weaponUpgrades[weaponId].unlockedAttachments, attachmentId]
+          }
+        }
+      }));
+    }
+  },
+
+  equipAttachment: (weaponId, attachmentId) => {
+    const attachment = ALL_ATTACHMENTS.find(a => a.id === attachmentId);
+    if (!attachment) return;
+
+    set((state) => {
+      const weapon = state.weaponUpgrades[weaponId];
+      const newActive = { ...weapon.activeAttachments };
+      
+      // Toggle off if already active
+      if (newActive[attachment.type] === attachmentId) {
+        delete newActive[attachment.type];
+      } else {
+        newActive[attachment.type] = attachmentId;
+      }
+
+      return {
+        weaponUpgrades: {
+          ...state.weaponUpgrades,
+          [weaponId]: {
+            ...weapon,
+            activeAttachments: newActive
+          }
+        }
+      };
+    });
+  },
+
+  upgradeWeaponStat: (weaponId, stat) => {
+    const currentLevel = get().weaponUpgrades[weaponId].levels[stat];
+    if (currentLevel >= 5) return;
+    
+    const cost = currentLevel * 200; // Base cost scaling
+    if (get().spendTacticalPoints(cost)) {
+      set((state) => ({
+        weaponUpgrades: {
+          ...state.weaponUpgrades,
+          [weaponId]: {
+            ...state.weaponUpgrades[weaponId],
+            levels: {
+              ...state.weaponUpgrades[weaponId].levels,
+              [stat]: currentLevel + 1
+            }
+          }
+        }
+      }));
+    }
+  },
+
   openCustomization: () => set({ isCustomizationOpen: true }),
   closeCustomization: () => set({ isCustomizationOpen: false }),
   openQuestLog: () => set({ isQuestLogOpen: true }),
@@ -162,4 +271,16 @@ export const useGameStore = create<GameState>()((set, get) => ({
   closeInventory: () => set({ isInventoryOpen: false }),
   openDailyChallenges: () => set({ isDailyChallengesOpen: true }),
   closeDailyChallenges: () => set({ isDailyChallengesOpen: false }),
+  openTraining: () => set({ isTrainingOpen: true }),
+  closeTraining: () => set({ isTrainingOpen: false }),
+  openWeaponCustomization: () => set({ isWeaponCustomizationOpen: true }),
+  closeWeaponCustomization: () => set({ isWeaponCustomizationOpen: false }),
 }));
+
+export const ALL_ATTACHMENTS: WeaponAttachment[] = [
+  { id: 'opt_reddot', nameAr: 'نقطة حمراء', type: 'optic', costPT: 150, bonus: { accuracy: 1.1 }, descriptionAr: 'منظار ليزر سريع للاستخدام القريب' },
+  { id: 'opt_acog', nameAr: 'منظار ACOG', type: 'optic', costPT: 300, bonus: { accuracy: 1.25 }, descriptionAr: 'تكبير متوسط للمسافات البعيدة' },
+  { id: 'mag_extended', nameAr: 'مخزن موسع', type: 'magazine', costPT: 250, bonus: { reloadSpeed: 1.1 }, descriptionAr: 'مخزن إضافي وسرعة تلقيم أفضل' },
+  { id: 'mag_fast', nameAr: 'تلقيم سريع', type: 'magazine', costPT: 200, bonus: { reloadSpeed: 1.3 }, descriptionAr: 'تصميم خاص لتبديل المخزن بسرعة فائقة' },
+  { id: 'bar_heavy', nameAr: 'سبطانة ثقيلة', type: 'barrel', costPT: 400, bonus: { damage: 1.15 }, descriptionAr: 'زيادة قوة الرصاصة واستقرار الإطلاق' },
+];

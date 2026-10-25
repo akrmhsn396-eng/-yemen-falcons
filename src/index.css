@@ -4,8 +4,12 @@
   color-scheme: dark;
   font-family: "Cairo", "Segoe UI", sans-serif;
   direction: rtl;
-  background: #020617;
-  color: white;
+  --bg: #0b1220;
+  --fg: #e6eef8;
+  --accent: #4fd1c5;
+  --secondary: #9fb3c9;
+  background: var(--bg);
+  color: var(--fg);
 }
 
 html, body, #root {
@@ -17,9 +21,7 @@ html, body, #root {
 }
 
 body {
-  background:
-    radial-gradient(circle at top, rgba(245, 158, 11, 0.12), transparent 30%),
-    #020617;
+  background: linear-gradient(180deg, #07101a 0%, #0c1724 100%);
 }
 
 button {
@@ -28,4 +30,31 @@ button {
 
 * {
   box-sizing: border-box;
+}
+
+/* Custom Scrollbar for Tactical HUD */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(79, 209, 197, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 209, 197, 0.5);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

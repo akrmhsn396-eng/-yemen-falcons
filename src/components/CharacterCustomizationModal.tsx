@@ -52,8 +52,8 @@ const skillPalette = {
   },
   aimAccuracy: {
     label: 'دقة التصويب',
-    iconBg: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-    progressBg: 'bg-amber-500',
+    iconBg: 'bg-[#4fd1c5]/20 text-[#4fd1c5] border-[#4fd1c5]/30',
+    progressBg: 'bg-[#4fd1c5]',
   },
   tacticalDefense: {
     label: 'الدفاع التكتيكي',
@@ -107,7 +107,7 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="relative w-full max-w-2xl bg-stone-900 border border-white/10 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl text-white space-y-6 overflow-hidden"
+        className="relative w-full max-w-2xl bg-[#0b1220] border border-white/10 rounded-[2.5rem] p-6 sm:p-8 shadow-2xl text-white space-y-6 overflow-hidden"
       >
         <div className="flex items-center justify-between border-b border-white/5 pb-4">
           <div className="flex items-center gap-3">
@@ -117,8 +117,8 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
             <div>
               <h3 className="text-xl font-black">تخصيص المقاتل اليمني</h3>
               <div className="flex items-center gap-2">
-                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                <span className="text-xs text-amber-500 font-black tracking-widest uppercase">
+                <Star className="w-3 h-3 text-[#4fd1c5] fill-[#4fd1c5]" />
+                <span className="text-xs text-[#4fd1c5] font-black tracking-widest uppercase">
                   {playerXP.toLocaleString()} XP متاح
                 </span>
               </div>
@@ -170,7 +170,7 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
                       }}
                       className={`p-5 rounded-3xl border text-right flex flex-col justify-between gap-4 transition-all cursor-pointer relative overflow-hidden ${
                         isSelected
-                          ? 'bg-amber-500/15 border-amber-500 ring-2 ring-amber-500/30 shadow-xl'
+                          ? 'bg-[#4fd1c5]/15 border-[#4fd1c5] ring-2 ring-[#4fd1c5]/30 shadow-xl'
                           : 'bg-black/40 border-white/5 hover:bg-white/5'
                       }`}
                     >
@@ -178,7 +178,7 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
                         <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${outfit.gradient} flex items-center justify-center shadow-md`}>
                           {isSelected && <Check className="w-4 h-4 text-white" />}
                         </div>
-                        <span className="text-[10px] font-bold text-amber-400 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                        <span className="text-[10px] font-bold text-[#4fd1c5] px-2 py-0.5 rounded bg-[#4fd1c5]/10 border border-[#4fd1c5]/20">
                           {outfit.bonus}
                         </span>
                       </div>
@@ -243,7 +243,7 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
                             ? 'bg-stone-800 border-stone-700 text-stone-500 cursor-not-allowed'
                             : !canAfford
                               ? 'bg-red-500/5 border-red-500/20 text-red-400/50 cursor-not-allowed'
-                              : 'bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500 hover:text-stone-950 cursor-pointer active:scale-95 shadow-lg shadow-amber-500/5'
+                              : 'bg-[#4fd1c5]/10 border-[#4fd1c5]/30 text-[#4fd1c5] hover:bg-[#4fd1c5] hover:text-[#0b1220] cursor-pointer active:scale-95 shadow-lg shadow-[#4fd1c5]/5'
                         }`}
                       >
                         {isMax ? (
@@ -269,7 +269,7 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
           <button
             onClick={onClose}
-            className="px-8 py-4 rounded-2xl bg-amber-500 text-stone-950 font-black hover:bg-amber-400 transition-all shadow-xl cursor-pointer active:scale-95"
+            className="px-8 py-4 rounded-2xl bg-[#4fd1c5] text-[#0b1220] font-black hover:bg-[#7ee7d0] transition-all shadow-xl cursor-pointer active:scale-95"
           >
             حفظ التغييرات والعودة
           </button>

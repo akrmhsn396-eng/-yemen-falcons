@@ -21,11 +21,11 @@ export const DailyChallengesModal: React.FC<DailyChallengesModalProps> = ({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-stone-900 p-6 text-white"
+        className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[#0b1220] p-6 text-white"
       >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#4fd1c5]/20 text-[#4fd1c5]">
               <Trophy className="h-5 w-5" />
             </div>
             <div>
@@ -54,14 +54,14 @@ export const DailyChallengesModal: React.FC<DailyChallengesModalProps> = ({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-400">
+                  <span className="rounded-full bg-[#4fd1c5]/10 px-2 py-1 text-[10px] font-bold text-[#4fd1c5]">
                     {challenge.rewardXP} XP
                   </span>
 
                   <div
                     className={`rounded-full px-2 py-1 text-[10px] font-black ${
                       challenge.isCompleted
-                        ? 'bg-emerald-500/20 text-emerald-400'
+                        ? 'bg-[#4fd1c5]/20 text-[#4fd1c5]'
                         : 'bg-stone-500/20 text-stone-300'
                     }`}
                   >
@@ -72,7 +72,7 @@ export const DailyChallengesModal: React.FC<DailyChallengesModalProps> = ({
 
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/5">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500"
+                  className="h-full rounded-full bg-gradient-to-r from-[#4fd1c5] to-[#7ee7d0]"
                   style={{
                     width: `${Math.min((challenge.progress / challenge.requirement) * 100, 100)}%`,
                   }}

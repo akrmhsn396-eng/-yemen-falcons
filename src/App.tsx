@@ -5,6 +5,8 @@ import { CharacterCustomizationModal } from './components/CharacterCustomization
 import { QuestLogModal } from './components/QuestLogModal';
 import { InventoryModal } from './components/InventoryModal';
 import { DailyChallengesModal } from './components/DailyChallengesModal';
+import { TrainingMiniGameModal } from './components/TrainingMiniGameModal';
+import { WeaponCustomizationModal } from './components/WeaponCustomizationModal';
 import { BattleScreen } from './components/screens/BattleScreen';
 import { useGameStore } from './store/gameStore';
 import { useGameState } from './hooks/useGameState';
@@ -23,13 +25,16 @@ export default function App() {
     isQuestLogOpen,
     isInventoryOpen,
     isDailyChallengesOpen,
+    isTrainingOpen,
     upgradeSkill,
     setQuestCompleted,
     openCustomization,
+    openTraining,
     closeCustomization,
     closeQuestLog,
     closeInventory,
     closeDailyChallenges,
+    closeTraining,
   } = useGameStore();
 
   const handleStartQuickMatch = () => {
@@ -45,14 +50,14 @@ export default function App() {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-stone-950 font-['Cairo',sans-serif]">
+    <div className="relative w-screen h-screen overflow-hidden bg-[#0b1220] font-['Cairo',sans-serif]">
       {gameState === 'title' && (
         <TitleScreen
           onStartQuickMatch={handleStartQuickMatch}
           onOpenMapSelection={() => setGameState('map-selection')}
           onOpenMultiplayer={() => undefined}
           onOpenCustomization={openCustomization}
-          onOpenSettingsStore={() => undefined}
+          onOpenSettingsStore={openTraining}
           onOpenTechSpec={() => undefined}
         />
       )}
@@ -61,7 +66,11 @@ export default function App() {
         <MapSelection onSelect={handleStartBattle} onBack={() => setGameState('title')} />
       )}
 
-      {gameState === 'playing' && <BattleScreen />}
+      {gameState === 'playing' && (
+        <BattleScreen 
+          onReturnToTitle={() => setGameState('title')}
+        />
+      )}
 
       <CharacterCustomizationModal
         isOpen={isCustomizationOpen}
@@ -93,6 +102,13 @@ export default function App() {
         onClose={closeDailyChallenges}
         challenges={dailyChallenges}
       />
+
+      <TrainingMiniGameModal
+        isOpen={isTrainingOpen}
+        onClose={closeTraining}
+      />
+
+      <WeaponCustomizationModal />
     </div>
   );
 }

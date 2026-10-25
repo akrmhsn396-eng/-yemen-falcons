@@ -263,3 +263,33 @@ export interface PlayerSkills {
   aimAccuracy: number;
   tacticalDefense: number;
 }
+
+export interface WeaponAttachment {
+  id: string;
+  nameAr: string;
+  type: 'optic' | 'magazine' | 'barrel' | 'underbarrel';
+  bonus: {
+    reloadSpeed?: number;
+    accuracy?: number;
+    damage?: number;
+  };
+  costPT: number;
+  descriptionAr: string;
+}
+
+export interface WeaponUpgradeState {
+  [weaponId: string]: {
+    unlockedAttachments: string[];
+    activeAttachments: {
+      optic?: string;
+      magazine?: string;
+      barrel?: string;
+      underbarrel?: string;
+    };
+    levels: {
+      reloadSpeed: number;
+      damage: number;
+      accuracy: number;
+    };
+  };
+}
