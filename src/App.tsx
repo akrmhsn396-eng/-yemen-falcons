@@ -86,13 +86,14 @@ export default function App() {
   const [stats, setStats] = useState<GameStats>(initialStats);
   const [room, setRoom] = useState<MultiplayerRoom>(initialRoom);
 
-  const skillUpgradeCost = useMemo(() => {
-    return {
+  const upgradeCosts = useMemo(
+    () => ({
       movementSpeed: playerSkills.movementSpeed * 500,
       aimAccuracy: playerSkills.aimAccuracy * 500,
       tacticalDefense: playerSkills.tacticalDefense * 500,
-    };
-  }, [playerSkills]);
+    }),
+    [playerSkills],
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -124,10 +125,13 @@ export default function App() {
     sound.playSelect();
     sound.startMountainAmbience();
     setCurrentProvince(
-      provinceId === 'sanaa' ? 'صنعاء القديمة' :
-      provinceId === 'aden' ? 'عدن التاريخية' :
-      provinceId === 'taiz' ? 'تعز الجبلية' :
-      'محافظة حضرموت',
+      provinceId === 'sanaa'
+        ? 'صنعاء القديمة'
+        : provinceId === 'aden'
+          ? 'عدن التاريخية'
+          : provinceId === 'taiz'
+            ? 'تعز الجبلية'
+            : 'محافظة حضرموت',
     );
     setGameState('playing');
   };
@@ -144,12 +148,14 @@ export default function App() {
     sound.playSelect();
   };
 
-  const handleCompleteQuest = (id: string) => {
-    const completedQuest = quests.find((q) => q.id === id);
-    if (!completedQuest || completedQuest.isCompleted) return;
+  const handleCompleteQuest = (questId: string) => {
+    const quest = quests.find((item) => item.id === questId);
+    if (!quest || quest.isCompleted) return;
 
-    setQuests((prev) => prev.map((q) => q.id === id ? { ...q, isCompleted: true } : q));
-    setTotalXP((prev) => prev + completedQuest.rewardXP);
+    setQuests((prev) =>
+      prev.map((item) => (item.id === questId ? { ...item, isCompleted: true } : item)),
+    );
+    setTotalXP((prev) => prev + quest.rewardXP);
     sound.playSectorCapture();
   };
 
@@ -167,10 +173,7 @@ export default function App() {
       )}
 
       {gameState === 'map-selection' && (
-        <MapSelection
-          onSelect={handleStartBattle}
-          onBack={() => setGameState('title')}
-        />
+        <MapSelection onSelect={handleStartBattle} onBack={() => setGameState('title')} />
       )}
 
       {gameState === 'playing' && (
@@ -217,7 +220,7 @@ export default function App() {
         playerXP={totalXP}
         skills={playerSkills}
         onUpgradeSkill={handleUpgradeSkill}
-        upgradeCosts={skillUpgradeCost}
+        upgradeCosts={upgradeCosts}
       />
 
       <SettingsStoreModal
