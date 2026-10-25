@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { UserCheck, Check, X, Crosshair, Move, ShieldAlert, Star, ChevronUp } from 'lucide-react';
 import { sound } from '../game/audio';
 import type { PlayerSkills } from '../types/game';

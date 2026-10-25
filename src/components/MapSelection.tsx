@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, MapPinned, Mountain, City, Shield } from 'lucide-react';
+import { ArrowLeft, MapPinned, Mountain, Building2, Shield } from 'lucide-react';
 
 interface MapSelectionProps {
   onSelect: (provinceId: string) => void;
@@ -20,7 +20,7 @@ const maps = [
     nameAr: 'عدن التاريخية',
     subtitle: 'سواحل وممرات بضائع',
     accent: 'from-blue-500/20 to-cyan-500/10',
-    icon: City,
+    icon: Building2,
   },
   {
     id: 'taiz',
