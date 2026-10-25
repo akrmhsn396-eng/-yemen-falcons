@@ -1,7 +1,7 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { RPGItem } from '../types/game';
-import { X, Backpack, Shield, Zap, Swords, Sparkles } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Backpack, X, Star } from 'lucide-react';
+import type { RPGItem } from '../types/game';
 
 interface InventoryModalProps {
   isOpen: boolean;
@@ -17,52 +17,60 @@ export const InventoryModal: React.FC<InventoryModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-lg font-['Cairo',sans-serif]">
-        <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-stone-900 border border-white/10 rounded-3xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-right"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-white/10 bg-stone-950/60">
-            <div className="flex items-center gap-3">
-              <Backpack className="w-6 h-6 text-amber-400" />
-              <h2 className="text-xl font-black text-white">حقيبة العتاد والأسلحة (Inventory & Weapons)</h2>
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-stone-900 p-6 text-white"
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-500/20 text-violet-400">
+              <Backpack className="h-5 w-5" />
             </div>
-            <button 
-              onClick={onClose}
-              className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-all cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div>
+              <h3 className="text-xl font-black">المخزون</h3>
+              <p className="text-xs text-stone-400">الأسلحة والعتاد المخصص</p>
+            </div>
           </div>
 
-          {/* Grid of Items */}
-          <div className="p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
-            {items.map((item) => (
-              <div 
-                key={item.id}
-                className="bg-stone-800/40 border border-white/10 hover:border-amber-500/50 rounded-2xl p-4 flex items-start gap-4 transition-all"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                  {item.type === 'weapon' ? <Swords className="w-7 h-7" /> : <Shield className="w-7 h-7" />}
+          <button
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-stone-300 hover:bg-white/10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {items.map((item) => (
+            <div key={item.id} className="rounded-3xl border border-white/10 bg-black/30 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-amber-300">
+                  <Star className="h-5 w-5" />
                 </div>
 
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">{item.rarity}</span>
-                    <span className="text-[10px] bg-white/10 text-stone-300 px-2 py-0.5 rounded-full">{item.type}</span>
-                  </div>
-                  <h3 className="text-white font-black text-base">{item.nameAr}</h3>
-                  <p className="text-stone-300 text-xs">{item.statsDesc}</p>
-                </div>
+                <span
+                  className={`rounded-full px-2 py-1 text-[10px] font-black ${
+                    item.rarity === 'legendary'
+                      ? 'bg-amber-500/20 text-amber-400'
+                      : item.rarity === 'rare'
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'bg-stone-500/20 text-stone-300'
+                  }`}
+                >
+                  {item.rarity}
+                </span>
               </div>
-            ))}
-          </div>
-        </motion.div>
-      </div>
-    </AnimatePresence>
+
+              <div className="mt-4">
+                <h4 className="text-lg font-black">{item.nameAr}</h4>
+                <p className="text-sm text-stone-300">{item.statsDesc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
   );
 };

@@ -1,17 +1,8 @@
-import React, { useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import {
-  UserCheck,
-  Check,
-  X,
-  Crosshair,
-  Move,
-  ShieldAlert,
-  Star,
-  ChevronUp,
-} from 'lucide-react';
+import React from 'react';
+import { motion } from 'motion/react';
+import { UserCheck, Check, X, Crosshair, Move, ShieldAlert, Star, ChevronUp } from 'lucide-react';
 import { sound } from '../game/audio';
-import { PlayerSkills } from '../types/game';
+import type { PlayerSkills } from '../types/game';
 
 interface CharacterCustomizationModalProps {
   isOpen: boolean;
@@ -19,7 +10,6 @@ interface CharacterCustomizationModalProps {
   playerXP: number;
   skills: PlayerSkills;
   onUpgradeSkill: (skillKey: keyof PlayerSkills, cost: number) => void;
-  upgradeCosts?: Partial<Record<keyof PlayerSkills, number>>;
 }
 
 interface OutfitOption {
@@ -78,25 +68,35 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
   playerXP,
   skills,
   onUpgradeSkill,
-  upgradeCosts,
 }) => {
-  const [selectedOutfit, setSelectedOutfit] = useState<string>(outfits[0].id);
-  const [activeTab, setActiveTab] = useState<'outfits' | 'skills'>('outfits');
+  const [selectedOutfit, setSelectedOutfit] = React.useState<string>(outfits[0].id);
+  const [activeTab, setActiveTab] = React.useState<'outfits' | 'skills'>('outfits');
 
-  const skillItems = useMemo(
+  const skillItems = React.useMemo(
     () =>
-      (Object.keys(skillPalette) as Array<keyof PlayerSkills>).map((key) => ({
-        key,
-        nameAr: skillPalette[key].label,
-        icon:
+      (Object.keys(skillPalette) as Array<keyof PlayerSkills>).map((key) => {
+        const baseCost =
           key === 'movementSpeed'
-            ? <Move className="w-5 h-5" />
+            ? skills.movementSpeed * 500
             : key === 'aimAccuracy'
-              ? <Crosshair className="w-5 h-5" />
-              : <ShieldAlert className="w-5 h-5" />,
-        cost: upgradeCosts?.[key] ?? skills[key] * 500,
-      })),
-    [skills, upgradeCosts],
+              ? skills.aimAccuracy * 500
+              : skills.tacticalDefense * 500;
+
+        return {
+          key,
+          nameAr: skillPalette[key].label,
+          icon:
+            key === 'movementSpeed' ? (
+              <Move className="w-5 h-5" />
+            ) : key === 'aimAccuracy' ? (
+              <Crosshair className="w-5 h-5" />
+            ) : (
+              <ShieldAlert className="w-5 h-5" />
+            ),
+          cost: baseCost,
+        };
+      }),
+    [skills],
   );
 
   if (!isOpen) return null;
@@ -203,7 +203,6 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
                   const level = skills[skill.key];
                   const isMax = level >= 5;
                   const canAfford = playerXP >= skill.cost;
-                  const palette = skillPalette[skill.key];
 
                   return (
                     <div
@@ -211,13 +210,13 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
                       className="p-5 bg-black/40 border border-white/5 rounded-3xl flex items-center justify-between gap-6"
                     >
                       <div className="flex items-center gap-4 grow">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${palette.iconBg}`}>
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${skillPalette[skill.key].iconBg}`}>
                           {skill.icon}
                         </div>
 
                         <div className="space-y-2 grow">
                           <div className="flex justify-between items-center">
-                            <h4 className="text-sm font-black text-white">{palette.label}</h4>
+                            <h4 className="text-sm font-black text-white">{skillPalette[skill.key].label}</h4>
                             <span className="text-[10px] font-bold text-stone-500">المستوى {level}/5</span>
                           </div>
 
@@ -227,7 +226,7 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
                                 key={i}
                                 className={`h-1.5 flex-1 rounded-full transition-all ${
                                   i <= level
-                                    ? `${palette.progressBg} shadow-[0_0_8px_rgba(0,0,0,0.5)]`
+                                    ? `${skillPalette[skill.key].progressBg} shadow-[0_0_8px_rgba(0,0,0,0.5)]`
                                     : 'bg-white/5'
                                 }`}
                               />

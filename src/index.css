@@ -1,1 +1,31 @@
 @import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  font-family: "Cairo", "Segoe UI", sans-serif;
+  direction: rtl;
+  background: #020617;
+  color: white;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+body {
+  background:
+    radial-gradient(circle at top, rgba(245, 158, 11, 0.12), transparent 30%),
+    #020617;
+}
+
+button {
+  font-family: inherit;
+}
+
+* {
+  box-sizing: border-box;
+}

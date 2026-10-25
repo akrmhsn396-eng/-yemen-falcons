@@ -1,7 +1,7 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Trophy, CheckCircle2, Star, Clock, Target, ShieldCheck } from 'lucide-react';
-import { DailyChallenge } from '../types/game';
+import { motion } from 'motion/react';
+import { Trophy, X } from 'lucide-react';
+import type { DailyChallenge } from '../types/game';
 
 interface DailyChallengesModalProps {
   isOpen: boolean;
@@ -14,104 +14,74 @@ export const DailyChallengesModal: React.FC<DailyChallengesModalProps> = ({
   onClose,
   challenges,
 }) => {
+  if (!isOpen) return null;
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm rtl">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="relative w-full max-w-2xl bg-stone-900 border border-white/10 rounded-3xl shadow-2xl overflow-hidden font-['Cairo',sans-serif]"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/5 bg-gradient-to-r from-stone-800 to-stone-900">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-500/20 rounded-xl">
-                  <Trophy className="w-6 h-6 text-amber-500" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black text-white">التحديات اليومية</h2>
-                  <p className="text-[10px] text-amber-500/80 font-bold uppercase tracking-widest">Daily Challenges</p>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-white/5 rounded-full text-stone-400 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
+    <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xl">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-stone-900 p-6 text-white"
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400">
+              <Trophy className="h-5 w-5" />
             </div>
+            <div>
+              <h3 className="text-xl font-black">التحديات اليومية</h3>
+              <p className="text-xs text-stone-400">أهداف يومية للمهارات والتقدم</p>
+            </div>
+          </div>
 
-            {/* Content */}
-            <div className="p-6 max-h-[70vh] overflow-y-auto space-y-4">
-              {challenges.map((challenge) => (
-                <div
-                  key={challenge.id}
-                  className={`relative p-5 rounded-2xl border transition-all ${
-                    challenge.isCompleted
-                      ? 'bg-amber-500/5 border-amber-500/30'
-                      : 'bg-white/5 border-white/10 hover:border-white/20'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className={`text-sm font-black ${challenge.isCompleted ? 'text-amber-500' : 'text-white'}`}>
-                          {challenge.titleAr}
-                        </h3>
-                        {challenge.isCompleted && (
-                          <CheckCircle2 className="w-4 h-4 text-amber-500" />
-                        )}
-                      </div>
-                      
-                      {/* Progress Bar */}
-                      <div className="mt-3 space-y-1.5">
-                        <div className="flex justify-between text-[10px] font-bold text-stone-400">
-                          <span>التقدم</span>
-                          <span>{challenge.progress} / {challenge.requirement}</span>
-                        </div>
-                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${(challenge.progress / challenge.requirement) * 100}%` }}
-                            className={`h-full rounded-full ${
-                              challenge.isCompleted ? 'bg-amber-500' : 'bg-blue-500'
-                            }`}
-                          />
-                        </div>
-                      </div>
-                    </div>
+          <button
+            onClick={onClose}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/5 text-stone-300 hover:bg-white/10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-                    {/* Reward */}
-                    <div className="text-center min-w-[80px]">
-                      <div className="p-2 bg-stone-800 rounded-xl mb-1 flex flex-col items-center justify-center">
-                        <Star className="w-4 h-4 text-amber-500 mb-0.5" />
-                        <span className="text-xs font-black text-amber-500">{challenge.rewardXP} XP</span>
-                      </div>
-                      <span className="text-[9px] font-bold text-stone-500 uppercase">مكافأة</span>
-                    </div>
+        <div className="space-y-4">
+          {challenges.map((challenge) => (
+            <div key={challenge.id} className="rounded-3xl border border-white/10 bg-black/30 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h4 className="text-lg font-black">{challenge.titleAr}</h4>
+                  <div className="text-xs text-stone-400">
+                    {challenge.progress}/{challenge.requirement}
                   </div>
                 </div>
-              ))}
-            </div>
 
-            {/* Footer */}
-            <div className="p-6 border-t border-white/5 bg-stone-900/50 flex justify-between items-center">
-              <div className="flex items-center gap-2 text-xs text-stone-400">
-                <Clock className="w-4 h-4" />
-                <span>تنتهي التحديات خلال 12 ساعة</span>
+                <div className="flex items-center gap-3">
+                  <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-bold text-amber-400">
+                    {challenge.rewardXP} XP
+                  </span>
+
+                  <div
+                    className={`rounded-full px-2 py-1 text-[10px] font-black ${
+                      challenge.isCompleted
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-stone-500/20 text-stone-300'
+                    }`}
+                  >
+                    {challenge.isCompleted ? 'مكتمل' : 'قيد التقدم'}
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={onClose}
-                className="px-8 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg active:scale-95"
-              >
-                موافق
-              </button>
+
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/5">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500"
+                  style={{
+                    width: `${Math.min((challenge.progress / challenge.requirement) * 100, 100)}%`,
+                  }}
+                />
+              </div>
             </div>
-          </motion.div>
+          ))}
         </div>
-      )}
-    </AnimatePresence>
+      </motion.div>
+    </div>
   );
 };
