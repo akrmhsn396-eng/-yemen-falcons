@@ -59,19 +59,16 @@ const skillPalette = {
     label: 'سرعة الحركة',
     iconBg: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     progressBg: 'bg-blue-500',
-    button: 'bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500 hover:text-stone-950',
   },
   aimAccuracy: {
     label: 'دقة التصويب',
     iconBg: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     progressBg: 'bg-amber-500',
-    button: 'bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500 hover:text-stone-950',
   },
   tacticalDefense: {
     label: 'الدفاع التكتيكي',
     iconBg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
     progressBg: 'bg-emerald-500',
-    button: 'bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500 hover:text-stone-950',
   },
 } as const;
 
@@ -91,7 +88,12 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
       (Object.keys(skillPalette) as Array<keyof PlayerSkills>).map((key) => ({
         key,
         nameAr: skillPalette[key].label,
-        icon: key === 'movementSpeed' ? <Move className="w-5 h-5" /> : key === 'aimAccuracy' ? <Crosshair className="w-5 h-5" /> : <ShieldAlert className="w-5 h-5" />,
+        icon:
+          key === 'movementSpeed'
+            ? <Move className="w-5 h-5" />
+            : key === 'aimAccuracy'
+              ? <Crosshair className="w-5 h-5" />
+              : <ShieldAlert className="w-5 h-5" />,
         cost: upgradeCosts?.[key] ?? skills[key] * 500,
       })),
     [skills, upgradeCosts],
@@ -122,6 +124,7 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
               </div>
             </div>
           </div>
+
           <button
             onClick={onClose}
             className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-stone-400 hover:text-white transition-colors cursor-pointer"
@@ -211,17 +214,21 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border ${palette.iconBg}`}>
                           {skill.icon}
                         </div>
+
                         <div className="space-y-2 grow">
                           <div className="flex justify-between items-center">
-                            <h4 className="text-sm font-black text-white">{skill.nameAr}</h4>
+                            <h4 className="text-sm font-black text-white">{palette.label}</h4>
                             <span className="text-[10px] font-bold text-stone-500">المستوى {level}/5</span>
                           </div>
+
                           <div className="flex gap-1.5">
                             {[1, 2, 3, 4, 5].map((i) => (
                               <div
                                 key={i}
                                 className={`h-1.5 flex-1 rounded-full transition-all ${
-                                  i <= level ? `${palette.progressBg} shadow-[0_0_8px_rgba(0,0,0,0.5)]` : 'bg-white/5'
+                                  i <= level
+                                    ? `${palette.progressBg} shadow-[0_0_8px_rgba(0,0,0,0.5)]`
+                                    : 'bg-white/5'
                                 }`}
                               />
                             ))}
@@ -237,7 +244,7 @@ export const CharacterCustomizationModal: React.FC<CharacterCustomizationModalPr
                             ? 'bg-stone-800 border-stone-700 text-stone-500 cursor-not-allowed'
                             : !canAfford
                               ? 'bg-red-500/5 border-red-500/20 text-red-400/50 cursor-not-allowed'
-                              : `${palette.button} cursor-pointer active:scale-95 shadow-lg shadow-amber-500/5`
+                              : 'bg-amber-500/10 border-amber-500/30 text-amber-500 hover:bg-amber-500 hover:text-stone-950 cursor-pointer active:scale-95 shadow-lg shadow-amber-500/5'
                         }`}
                       >
                         {isMax ? (
